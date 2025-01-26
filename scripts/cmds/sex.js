@@ -4,7 +4,7 @@ module.exports = {
     version: "7.0",
     author: "xnil",
     countDown: 5,
-    role: 0,
+    role: 1,
     shortDescription: "all video ðŸ“·",
     longDescription: "",
     category: "Video",
