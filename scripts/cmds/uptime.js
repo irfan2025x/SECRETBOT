@@ -2,15 +2,15 @@ module.exports = {
   config: {
     name: "uptime",
     aliases: ["upt"],
-    version: "4.0",
+    version: "6.1",
     author: "Irfan Ahmed",
     countDown: 5,
     role: 0,
     shortDescription: {
-      en: "Check bot uptime and system stats."
+      en: "Check bot uptime, stats, and more."
     },
     longDescription: {
-      en: "Displays bot uptime, system stats like memory usage, CPU load, OS details, disk usage, and Node.js version."
+      en: "Displays bot uptime, system stats, memory usage, CPU load, total users, total groups, and additional details."
     },
     category: "Utility",
     guide: {
@@ -18,29 +18,31 @@ module.exports = {
     }
   },
 
-  onStart: async function ({ api, event }) {
+  onStart: async function ({ api, event, botData = {} }) {
     const os = require("os");
     const { execSync } = require("child_process");
 
-    // Bot uptime
+    const formatBytes = (bytes) => {
+      const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+      if (bytes === 0) return "0 Bytes";
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+    };
+
     const botUptimeInMilliseconds = process.uptime() * 1000;
     const botUptime = formatDuration(botUptimeInMilliseconds);
 
-    // System uptime (since last reboot)
     const systemUptimeInMilliseconds = os.uptime() * 1000;
     const systemUptime = formatDuration(systemUptimeInMilliseconds);
 
-    // Memory usage
-    const usedMemory = (os.totalmem() - os.freemem()) / (1024 * 1024); // in MB
-    const totalMemory = os.totalmem() / (1024 * 1024); // in MB
-    const botMemoryUsage = process.memoryUsage().heapUsed / (1024 * 1024); // in MB
+    const usedMemory = os.totalmem() - os.freemem();
+    const totalMemory = os.totalmem();
+    const botMemoryUsage = process.memoryUsage().heapUsed;
 
-    // CPU load and details
-    const cpuLoad = os.loadavg(); // [1min, 5min, 15min]
-    const cpuCores = os.cpus().length; // Total cores
-    const cpuSpeed = os.cpus()[0].speed; // Speed of one core (in MHz)
+    const cpuLoad = os.loadavg();
+    const cpuCores = os.cpus().length;
+    const cpuSpeed = os.cpus()[0].speed;
 
-    // Disk usage (only for Linux/macOS systems)
     let diskUsage = "N/A";
     try {
       const diskInfo = execSync("df -h --total | grep total").toString();
@@ -50,34 +52,47 @@ module.exports = {
       diskUsage = "Disk info unavailable.";
     }
 
-    // Operating system and architecture
-    const osType = os.type(); // e.g., Linux, Windows_NT
-    const osPlatform = os.platform(); // e.g., linux, win32
-    const osArch = os.arch(); // e.g., x64, arm
+    const osType = os.type();
+    const osPlatform = os.platform();
+    const osArch = os.arch();
 
-    // Node.js version
     const nodeVersion = process.version;
 
-    // Last Restart Time
     const restartTime = new Date(Date.now() - botUptimeInMilliseconds).toLocaleString();
 
-    // Final message
+    // Total users and groups
+    const totalUsers = botData?.totalUsers || 0; // Default to 0 if undefined
+    const totalGroups = botData?.totalGroups || 0; // Default to 0 if undefined
+
     const message = `
-🤖 **Bot Uptime Stats:**
+━━━━━━━ 🤖 **BOT STATS** ━━━━━━━
 ⏱ **Bot Uptime:** ${botUptime}
 💻 **System Uptime:** ${systemUptime}
-📊 **Memory Usage:**
-   - Total: ${totalMemory.toFixed(2)} MB
-   - Used: ${usedMemory.toFixed(2)} MB
-   - Bot: ${botMemoryUsage.toFixed(2)} MB
-🖥 **CPU Stats:**
-   - Cores: ${cpuCores}
-   - Avg Speed: ${cpuSpeed} MHz
-   - Load: 1m: ${cpuLoad[0].toFixed(2)} | 5m: ${cpuLoad[1].toFixed(2)} | 15m: ${cpuLoad[2].toFixed(2)}
-💾 **Disk Usage:** ${diskUsage}
-🛠 **OS:** ${osType} (${osPlatform}, ${osArch})
-🔧 **Node.js Version:** ${nodeVersion}
-🔄 **Last Restart:** ${restartTime}
+
+📊 **Memory Usage**
+   - **Total Memory:** ${formatBytes(totalMemory)}
+   - **Used Memory:** ${formatBytes(usedMemory)}
+   - **Bot Memory:** ${formatBytes(botMemoryUsage)}
+
+🖥 **CPU Stats**
+   - **Cores:** ${cpuCores}
+   - **Avg Speed:** ${cpuSpeed} MHz
+   - **Load (1m|5m|15m):** ${cpuLoad.map((load) => load.toFixed(2)).join(" | ")}
+
+💾 **Disk Usage**
+   - ${diskUsage}
+
+👥 **Bot Data**
+   - **Total Users:** ${totalUsers}
+   - **Total Groups:** ${totalGroups}
+
+🛠 **System Info**
+   - **OS:** ${osType} (${osPlatform}, ${osArch})
+   - **Node.js Version:** ${nodeVersion}
+
+🔄 **Last Restart Time**
+   - ${restartTime}
+━━━━━━━━━━━━━━━━━━━━━━━
     `.trim();
 
     return api.sendMessage(message, event.threadID, event.messageID);
