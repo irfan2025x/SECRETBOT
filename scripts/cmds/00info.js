@@ -22,10 +22,10 @@ module.exports = {
             age: "『 ⩸__21+__⩸ 』",
             relationshipStatus: "⩸__🆂🅸🅽🅶🅻🅴__⩸",
             messenger: "https://m.me/xxxx",
-            facebook: "https://www.facebook.com/psychopath.irfan.io",
-            whatsapp: "+6585062351",
+            facebook: "https://www.facebook.com/profile.php?id=100082107939450",
+            whatsapp: "+658506**1",
             telegram: "https://t.me/irfan420x",
-            instagram: "https://www.instagram.com/toxic_4_2_0?igsh=MWNweXg0OGJuMDJxYw=="
+            instagram: "https://www.instagram.com/toxic_4_2_0=="
         };
 
         // Random Image URL
