@@ -1,6 +1,8 @@
 const axios = require("axios");
 const m = require("moment-timezone");
 
+let userMemory = {};  // In-memory storage for user queries and responses
+
 module.exports = {
   config: {
     name: "bot",
@@ -15,16 +17,17 @@ module.exports = {
     },
   },
 
-  onStart: async function () {
-    this.lastMessageID = null;  // To track the last bot message ID
-  },
+  onStart: async function () {},
 
   onChat: async function ({ api, args, event }) {
     const body = event.body.trim().toLowerCase();
     const Time = m.tz("Asia/Dhaka");
     const time = Time.format("MMMM D, YYYY h:mm A");
 
-    // If the message starts with "bot"
+    const senderID = event.senderID;
+    const threadID = event.threadID;
+
+    // Check if the message starts with "bot"
     if (body.startsWith("bot")) {
       const query = body.slice(3).trim(); // Remove "bot" from the message to get the query
       if (!query) {
@@ -36,53 +39,66 @@ module.exports = {
       }
 
       try {
+        // Log the query before making the API call
+        console.log("Query sent to API:", query);
+
         // Make API call with the query
         const response = await axios.get(
           `https://kaiz-apis.gleeze.com/api/gpt-4o?ask=${encodeURIComponent(query)}&uid=1&webSearch=off`
         );
+        
+        // Log the response from the API
+        console.log("API Response:", response.data);
+
+        // Get the actual content from the response
         const content = response.data.response; // Corrected response path
 
-        // Send the response
-        const sentMessage = await api.sendMessage(
+        // Save the user's query and the response in memory
+        userMemory[senderID] = {
+          query: query,
+          response: content
+        };
+
+        // Send the response back to the user
+        return api.sendMessage(
           `${content}`,
-          event.threadID,
+          threadID,
           event.messageID
         );
-
-        // Store the message ID of the bot's last response
-        this.lastMessageID = sentMessage.messageID;
-
       } catch (error) {
-        console.error(`Failed to get an answer: ${error.message}`);
+        console.error("API Call Error:", error.message);
+        
+        // Send an error message if something goes wrong
         return api.sendMessage(
           "❌ কিছু একটা সমস্যা হয়েছে, পরে চেষ্টা করো।",
-          event.threadID,
+          threadID,
           event.messageID
         );
       }
     } else {
-      // If the message is a reply to the last bot message
-      if (event.messageReply && event.messageReply.messageID === this.lastMessageID) {
-        const query = body.trim();
-        try {
-          const response = await axios.get(
-            `https://kaiz-apis.gleeze.com/api/gpt-4o?ask=${encodeURIComponent(query)}&uid=1&webSearch=off`
-          );
-          const content = response.data.response;
-
-          // Send the new response
-          return api.sendMessage(
-            `${content}`,
-            event.threadID,
-            event.messageID
-          );
-        } catch (error) {
-          console.error(`Failed to get an answer: ${error.message}`);
-          return api.sendMessage(
-            "❌ কিছু একটা সমস্যা হয়েছে, পরে চেষ্টা করো।",
-            event.threadID,
-            event.messageID
-          );
+      // If the message is a reply to bot's response
+      if (event.messageReply && userMemory[senderID]) {
+        const previousResponse = userMemory[senderID].response;
+        if (previousResponse) {
+          // Reply to the previous response with new answer
+          try {
+            const response = await axios.get(
+              `https://kaiz-apis.gleeze.com/api/gpt-4o?ask=${encodeURIComponent(body)}&uid=1&webSearch=off`
+            );
+            const content = response.data.response;
+            api.sendMessage(
+              `${content}`,
+              threadID,
+              event.messageID
+            );
+          } catch (error) {
+            console.error("API Call Error:", error.message);
+            api.sendMessage(
+              "❌ কিছু একটা সমস্যা হয়েছে, পরে চেষ্টা করো।",
+              threadID,
+              event.messageID
+            );
+          }
         }
       }
     }
