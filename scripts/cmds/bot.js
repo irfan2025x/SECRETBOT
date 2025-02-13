@@ -1,8 +1,6 @@
 const axios = require("axios");
 const m = require("moment-timezone");
 
-let userMemory = {};  // In-memory storage for user queries and responses
-
 module.exports = {
   config: {
     name: "bot",
@@ -24,82 +22,42 @@ module.exports = {
     const Time = m.tz("Asia/Dhaka");
     const time = Time.format("MMMM D, YYYY h:mm A");
 
-    const senderID = event.senderID;
-    const threadID = event.threadID;
-
     // Check if the message starts with "bot"
     if (body.startsWith("bot")) {
       const query = body.slice(3).trim(); // Remove "bot" from the message to get the query
+
+      if (query === "hi") {
+        return api.sendMessage("Hi! How can I help you?", event.threadID, event.messageID);
+      }
+
       if (!query) {
         return api.sendMessage(
-          `কিরে কি কবি তারাতাড়ি ক 😒`, // Custom response when no query is provided
+          `Please ask something after saying 'bot'!`,
           event.threadID,
           event.messageID
         );
       }
 
       try {
-        // Log the query before making the API call
-        console.log("Query sent to API:", query);
-
         // Make API call with the query
         const response = await axios.get(
           `https://kaiz-apis.gleeze.com/api/gpt-4o?ask=${encodeURIComponent(query)}&uid=1&webSearch=off`
         );
-        
-        // Log the response from the API
-        console.log("API Response:", response.data);
-
-        // Get the actual content from the response
         const content = response.data.response; // Corrected response path
 
-        // Save the user's query and the response in memory
-        userMemory[senderID] = {
-          query: query,
-          response: content
-        };
-
-        // Send the response back to the user
+        // Send the response
         return api.sendMessage(
           `${content}`,
-          threadID,
+          event.threadID,
           event.messageID
         );
       } catch (error) {
-        console.error("API Call Error:", error.message);
-        
-        // Send an error message if something goes wrong
+        console.error(`Failed to get an answer: ${error.message}`);
         return api.sendMessage(
-          "❌ কিছু একটা সমস্যা হয়েছে, পরে চেষ্টা করো।",
-          threadID,
+          "An error occurred while processing your request.",
+          event.threadID,
           event.messageID
         );
-      }
-    } else {
-      // If the message is a reply to bot's response
-      if (event.messageReply && userMemory[senderID]) {
-        const previousResponse = userMemory[senderID].response;
-        if (previousResponse) {
-          // Reply to the previous response with new answer
-          try {
-            const response = await axios.get(
-              `https://kaiz-apis.gleeze.com/api/gpt-4o?ask=${encodeURIComponent(body)}&uid=1&webSearch=off`
-            );
-            const content = response.data.response;
-            api.sendMessage(
-              `${content}`,
-              threadID,
-              event.messageID
-            );
-          } catch (error) {
-            console.error("API Call Error:", error.message);
-            api.sendMessage(
-              "❌ কিছু একটা সমস্যা হয়েছে, পরে চেষ্টা করো।",
-              threadID,
-              event.messageID
-            );
-          }
-        }
       }
     }
   },
