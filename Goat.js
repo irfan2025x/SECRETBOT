@@ -281,26 +281,3 @@ function compareVersion(version1, version2) {
 	}
 	return 0; // version1 = version2
 }
-async function sendAutoMessage(api) {
-    try {
-        const threadList = await api.getThreadList(20, null, ["INBOX"]);
-        const message = "✅ Psycho Bot is now online! Stay connected.";
-        
-        threadList.forEach(thread => {
-            if (thread.isGroup) {
-                api.sendMessage(message, thread.threadID);
-            }
-        });
-    } catch (error) {
-        console.error("Failed to send auto messages:", error);
-    }
-}
-
-// যখন বট লগইন করবে, তখন অটো মেসেজ পাঠাবে
-global.GoatBot.reLoginBot = function () {
-    require("./bot/login/login.js").login((err, api) => {
-        if (err) return console.error(err);
-        global.GoatBot.fcaApi = api;
-        sendAutoMessage(api);
-    });
-};
